@@ -1,6 +1,8 @@
 from flask import Blueprint,jsonify, request
 from app.models.user import LoginPayload
 from pydantic import ValidationError
+from app import db
+from bson import ObjectId
 
 
 main_bp=Blueprint('main_bp',__name__)
@@ -28,7 +30,14 @@ def login():
 # RF: O sistema deve permitir listagem de todos os produtos
 @main_bp.route('/products')
 def get_products():
-    return jsonify({"message":"Esta é a rota de listagem dos produtos"})
+    products_cursor=db.products.find({})
+    products_list=[]
+
+    for product in products_cursor:
+        product['_id']=str(product['_id'])
+        products_list.append(product)
+
+    return jsonify(products_list)
 
 # RF: O sistema deve permitir a criacao de um novo produto
 @main_bp.route('/products',methods=['POST'])
@@ -36,9 +45,19 @@ def create_product():
     return jsonify({"message":"Criando um novo produto"})
 
 # RF: O sistema deve permitir a visualização dos detalhes de um unico produto
-@main_bp.route('/product/<int:product_id>', methods=['GET'])
+@main_bp.route('/product/<string:product_id>', methods=['GET'])
 def get_product_by_id(product_id):
-    return jsonify({'message':f'Vendo os detalhes de um único Produto {product_id}'})
+    try:
+        id=ObjectId(product_id)
+    except Exception as e:
+        return jsonify({'erro':f'erro ao transformar o id em ObjectId{product_id}: {e}'})
+
+    product_get_id=db.products.find_one({'_id':id})
+    
+    if product_get_id:
+        product_get_id['_id'] =str(product_get_id['_id'])
+        return jsonify(product_get_id)
+    return jsonify({'error':f'Produto {product_id} Não encontrado'})
 # RF: O sistema deve permitir a atualização de um unico produto existente
 @main_bp.route('/product/<int:product_id>',methods=['PUT'])
 def put_product(product_id):
