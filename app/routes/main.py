@@ -3,7 +3,7 @@ from app.models.user import LoginPayload
 from pydantic import ValidationError
 from app import db
 from bson import ObjectId
-
+from app.models.products import *
 
 main_bp=Blueprint('main_bp',__name__)
 
@@ -31,12 +31,7 @@ def login():
 @main_bp.route('/products')
 def get_products():
     products_cursor=db.products.find({})
-    products_list=[]
-
-    for product in products_cursor:
-        product['_id']=str(product['_id'])
-        products_list.append(product)
-
+    products_list=[ProductDBModel(**product).model_dump(by_alias=True,exclude_none=True) for product in products_cursor]
     return jsonify(products_list)
 
 # RF: O sistema deve permitir a criacao de um novo produto
@@ -55,8 +50,8 @@ def get_product_by_id(product_id):
     product_get_id=db.products.find_one({'_id':id})
     
     if product_get_id:
-        product_get_id['_id'] =str(product_get_id['_id'])
-        return jsonify(product_get_id)
+        product_model=[ProductDBModel(**product_get_id).model_dump(by_alias=True,exclude_none=True)]
+        return jsonify(product_model)
     return jsonify({'error':f'Produto {product_id} Não encontrado'})
 # RF: O sistema deve permitir a atualização de um unico produto existente
 @main_bp.route('/product/<int:product_id>',methods=['PUT'])
